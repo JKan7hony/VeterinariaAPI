@@ -30,5 +30,6 @@ if (app.Environment.IsDevelopment())
 app.MapRolApi();
 app.MapEspecialidadApi();
 app.MapClienteApi();
+app.MapFacturasApi();
 
 app.Run();
