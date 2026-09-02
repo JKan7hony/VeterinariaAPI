@@ -1,0 +1,27 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace VeterinariaAPI.Models;
+
+public partial class Paciente
+{
+    public int Id { get; set; }
+
+    public int ClienteId { get; set; }
+
+    public string Nombre { get; set; } = null!;
+
+    public string Especie { get; set; } = null!;
+
+    public string? Raza { get; set; }
+
+    public decimal? Peso { get; set; }
+
+    public string? Alergias { get; set; }
+
+    public virtual ICollection<Cita> Cita { get; set; } = new List<Cita>();
+
+    public virtual Cliente Cliente { get; set; } = null!;
+
+    public virtual ICollection<Consulta> Consulta { get; set; } = new List<Consulta>();
+}
