@@ -34,4 +34,7 @@ app.MapFacturasApi();
 app.MapPacientesApi();
 app.MapInsumosApi();
 app.MapDetalleRecetaApi();
+
+//Revisar Usuario API
+app.MapUsuariosApi();
 app.Run();
