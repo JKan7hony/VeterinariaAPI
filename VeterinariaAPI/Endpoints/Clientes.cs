@@ -39,7 +39,7 @@ namespace VeterinariaAPI.Endpoints
                 return Results.Ok(clientes);
             });
 
-            //API para eliminar clientes
+            //API para eliminar cliente
             clientes.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
             {
                 var clientes = await db.Clientes.FindAsync(id);

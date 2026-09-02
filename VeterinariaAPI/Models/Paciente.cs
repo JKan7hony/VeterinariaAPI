@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace VeterinariaAPI.Models;
 
@@ -18,10 +19,10 @@ public partial class Paciente
     public decimal? Peso { get; set; }
 
     public string? Alergias { get; set; }
-
+    [JsonIgnore]
     public virtual ICollection<Cita> Cita { get; set; } = new List<Cita>();
-
+    [JsonIgnore]
     public virtual Cliente Cliente { get; set; } = null!;
-
+    [JsonIgnore]
     public virtual ICollection<Consulta> Consulta { get; set; } = new List<Consulta>();
 }

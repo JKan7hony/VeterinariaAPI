@@ -31,5 +31,6 @@ app.MapRolApi();
 app.MapEspecialidadApi();
 app.MapClienteApi();
 app.MapFacturasApi();
+app.MapPacientesApi();
 
 app.Run();

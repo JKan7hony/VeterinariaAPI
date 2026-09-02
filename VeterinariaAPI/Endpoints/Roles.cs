@@ -24,7 +24,7 @@ namespace VeterinariaAPI.Endpoints
                 return Results.Created($"/api/roles/{r.Id}", r);
             });
 
-            //API para editar consola por ID
+            //API para editar rol por ID
             roles.MapPut("/{id:int}", async (int id, Role r, VeterinariodbContext db) =>
             {
                 var roles = await db.Roles.FindAsync(id);
