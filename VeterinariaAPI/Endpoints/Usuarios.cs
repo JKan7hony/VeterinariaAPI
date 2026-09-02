@@ -1,64 +1,10 @@
-﻿//using VeterinariaAPI.Models;
-//using Microsoft.EntityFrameworkCore;
-
-//namespace VeterinariaAPI.Endpoints
-//{
-//    public static class UsuariosApi
-//    {
-//        public static void MapUsuariosApi(this WebApplication app)
-//        {
-//            var usuarios = app.MapGroup("/api/usuarios").WithTags("Usuarios");
-
-//            //Api para listar usuarios
-//            usuarios.MapGet("/", async (VeterinariodbContext db) =>
-//            {
-//                var listaUsuarios = await db.Usuarios.ToListAsync();
-//                return Results.Ok(listaUsuarios);
-//            });
-
-//            //API para crear un usuario
-//            usuarios.MapPost("/", async (Usuario u, VeterinariodbContext db) =>
-//            {
-//                db.Usuarios.Add(u);
-//                await db.SaveChangesAsync();
-//                return Results.Created($"/api/usuarios/{u.Id}", u);
-//            });
-
-//            //API para editar usuario por ID
-//            usuarios.MapPut("/{id:int}", async (int id, Usuario u, VeterinariodbContext db) =>
-//            {
-//                var usuarios = await db.Usuarios.FindAsync(id);
-//                if (usuarios is null) return Results.NotFound();
-
-//                usuarios.RolId = u.RolId;
-//                usuarios.NombreCompleto = u.NombreCompleto;
-//                usuarios.Email = u.Email;
-//                usuarios.PasswordHash = u.PasswordHash;
-
-//                await db.SaveChangesAsync();
-//                return Results.Ok(usuarios);
-//            });
-
-//            //API para eliminar usuarios
-//            usuarios.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
-//            {
-//                var usuarios = await db.Usuarios.FindAsync(id);
-//                if (usuarios is null) return Results.NotFound();
-
-//                db.Usuarios.Remove(usuarios);
-//                await db.SaveChangesAsync();
-//                return Results.NoContent();
-//            });
-//        }
-//    }
-//}
-using VeterinariaAPI.Models;
-using VeterinariaAPI.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.IdentityModel.Tokens;
+using VeterinariaAPI.Models;
+using VeterinariaAPI.Repositories;
+using VeterinariaAPI.Services;
 
 namespace VeterinariaAPI.Endpoints
 {
@@ -68,24 +14,24 @@ namespace VeterinariaAPI.Endpoints
         {
             var usuarios = app.MapGroup("/api/usuarios").WithTags("Usuarios");
 
-            // API para listar usuarios (incluyendo el nombre de su rol)
-            usuarios.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar usuarios (obtenidos desde el Repositorio)
+            usuarios.MapGet("/", async (IUsuarioRepository repo) =>
             {
-                var listaUsuarios = await db.Usuarios
-                    .Include(u => u.Rol)
-                    .Select(u => new {
-                        u.Id,
-                        u.NombreCompleto,
-                        u.Email,
-                        Rol = u.Rol != null ? u.Rol.Nombre : "Sin Rol"
-                    })
-                    .ToListAsync();
+                var listaUsuarios = await repo.ObtenerTodosAsync();
 
-                return Results.Ok(listaUsuarios);
+                var respuesta = listaUsuarios.Select(u => new
+                {
+                    u.Id,
+                    u.NombreCompleto,
+                    u.Email,
+                    Rol = u.Rol != null ? u.Rol.Nombre : "Sin Rol"
+                });
+
+                return Results.Ok(respuesta);
             });
 
-            // API para registrar/crear un usuario con contraseña hasheada
-            usuarios.MapPost("/register", async (UsuarioRegisterDto dto, VeterinariodbContext db, AuthService auth) =>
+            // API para registrar/crear un usuario
+            usuarios.MapPost("/register", async (UsuarioRegisterDto dto, IUsuarioRepository repo, AuthService auth) =>
             {
                 var nuevoUsuario = new Usuario
                 {
@@ -96,8 +42,8 @@ namespace VeterinariaAPI.Endpoints
 
                 nuevoUsuario.PasswordHash = auth.HashPassword(nuevoUsuario, dto.Password);
 
-                db.Usuarios.Add(nuevoUsuario);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(nuevoUsuario);
+                await repo.GuardarCambiosAsync();
 
                 return Results.Created($"/api/usuarios/{nuevoUsuario.Id}", new
                 {
@@ -109,12 +55,10 @@ namespace VeterinariaAPI.Endpoints
             });
 
             // API para Iniciar Sesión (Login) y obtener JWT Token
-            usuarios.MapPost("/login", async (LoginRequest login, VeterinariodbContext db, AuthService auth, IConfiguration config) =>
+            usuarios.MapPost("/login", async (LoginRequest login, IUsuarioRepository repo, AuthService auth, IConfiguration config) =>
             {
-                // Obtenemos el usuario e INCLUIMOS la tabla Roles asociada por FK
-                var usuario = await db.Usuarios
-                    .Include(u => u.Rol)
-                    .FirstOrDefaultAsync(u => u.Email == login.Email);
+                // Obtenemos el usuario e incluimos su Rol mediante el Repositorio
+                var usuario = await repo.ObtenerPorEmailAsync(login.Email);
 
                 if (usuario is null || !auth.VerifyPassword(usuario, login.Password))
                     return Results.Unauthorized();
@@ -124,7 +68,6 @@ namespace VeterinariaAPI.Endpoints
                     new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
                     new Claim(ClaimTypes.Name, usuario.NombreCompleto),
                     new Claim(ClaimTypes.Email, usuario.Email),
-                    // Asignamos el nombre del rol traído desde la tabla Roles
                     new Claim(ClaimTypes.Role, usuario.Rol?.Nombre ?? "Cliente")
                 };
 
@@ -147,14 +90,15 @@ namespace VeterinariaAPI.Endpoints
                 return Results.Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
             });
 
-            // API para eliminar usuario por ID
-            usuarios.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar usuario por ID (Protegida por Roles)
+            usuarios.MapDelete("/{id:int}", async (int id, IUsuarioRepository repo) =>
             {
-                var usuario = await db.Usuarios.FindAsync(id);
+                var usuario = await repo.ObtenerPorIdAsync(id);
                 if (usuario is null) return Results.NotFound();
 
-                db.Usuarios.Remove(usuario);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(usuario);
+                await repo.GuardarCambiosAsync();
+
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }

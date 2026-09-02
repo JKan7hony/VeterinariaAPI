@@ -1,50 +1,50 @@
 ﻿using VeterinariaAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
 {
     public static class EspecialidadesApi
     {
-    public static void MapEspecialidadApi(this WebApplication app)
+        public static void MapEspecialidadApi(this WebApplication app)
         {
             var especialidad = app.MapGroup("/api/especialidades").WithTags("Especialidad");
 
-            //Api para listar especialidades
-            especialidad.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar especialidades
+            especialidad.MapGet("/", async (IRepository<Especialidade> repo) =>
             {
-                var listaEspecialidades = await db.Especialidades.ToListAsync();
+                var listaEspecialidades = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaEspecialidades);
             });
 
-            //API para crear una especialiddad
-            especialidad.MapPost("/", async (Especialidade e, VeterinariodbContext db) =>
+            // API para crear una especialidad
+            especialidad.MapPost("/", async (Especialidade e, IRepository<Especialidade> repo) =>
             {
-                db.Especialidades.Add(e);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(e);
+                await repo.GuardarCambiosAsync();
                 return Results.Created($"/api/especialidades/{e.Id}", e);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
-            //API para editar especialidad por ID
-            especialidad.MapPut("/{id:int}", async (int id, Especialidade e, VeterinariodbContext db) =>
+            // API para editar especialidad por ID
+            especialidad.MapPut("/{id:int}", async (int id, Especialidade e, IRepository<Especialidade> repo) =>
             {
-                var especialidades = await db.Especialidades.FindAsync(id);
-                if (especialidades is null) return Results.NotFound();
+                var especialidadExistente = await repo.ObtenerPorIdAsync(id);
+                if (especialidadExistente is null) return Results.NotFound();
 
-                especialidades.Nombre = e.Nombre;
-                especialidades.CostoBase = e.CostoBase;
+                especialidadExistente.Nombre = e.Nombre;
+                especialidadExistente.CostoBase = e.CostoBase;
 
-                await db.SaveChangesAsync();
-                return Results.Ok(especialidades);
+                await repo.GuardarCambiosAsync();
+                return Results.Ok(especialidadExistente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
-            //API para eliminar especialidades
-            especialidad.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar especialidades
+            especialidad.MapDelete("/{id:int}", async (int id, IRepository<Especialidade> repo) =>
             {
-                var especialidades = await db.Especialidades.FindAsync(id);
-                if (especialidades is null) return Results.NotFound();
+                var especialidadExistente = await repo.ObtenerPorIdAsync(id);
+                if (especialidadExistente is null) return Results.NotFound();
 
-                db.Especialidades.Remove(especialidades);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(especialidadExistente);
+                await repo.GuardarCambiosAsync();
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
         }

@@ -1,5 +1,5 @@
 ﻿using VeterinariaAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
 {
@@ -9,44 +9,44 @@ namespace VeterinariaAPI.Endpoints
         {
             var insumos = app.MapGroup("/api/insumos").WithTags("Insumos");
 
-            //Api para listar insumos
-            insumos.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar insumos
+            insumos.MapGet("/", async (IRepository<Insumo> repo) =>
             {
-                var listaInsumos = await db.Insumos.ToListAsync();
+                var listaInsumos = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaInsumos);
             });
 
-            //API para crear un insumo
-            insumos.MapPost("/", async (Insumo i, VeterinariodbContext db) =>
+            // API para crear un insumo
+            insumos.MapPost("/", async (Insumo i, IRepository<Insumo> repo) =>
             {
-                db.Insumos.Add(i);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(i);
+                await repo.GuardarCambiosAsync();
                 return Results.Created($"/api/insumos/{i.Id}", i);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para editar insumo por ID
-            insumos.MapPut("/{id:int}", async (int id, Insumo i, VeterinariodbContext db) =>
+            // API para editar insumo por ID
+            insumos.MapPut("/{id:int}", async (int id, Insumo i, IRepository<Insumo> repo) =>
             {
-                var insumos = await db.Insumos.FindAsync(id);
-                if (insumos is null) return Results.NotFound();
+                var insumoExistente = await repo.ObtenerPorIdAsync(id);
+                if (insumoExistente is null) return Results.NotFound();
 
-                insumos.NombreProducto = i.NombreProducto;
-                insumos.Tipo = i.Tipo;
-                insumos.StockActual = i.StockActual;
-                insumos.PrecioUnitario = i.PrecioUnitario;
+                insumoExistente.NombreProducto = i.NombreProducto;
+                insumoExistente.Tipo = i.Tipo;
+                insumoExistente.StockActual = i.StockActual;
+                insumoExistente.PrecioUnitario = i.PrecioUnitario;
 
-                await db.SaveChangesAsync();
-                return Results.Ok(insumos);
+                await repo.GuardarCambiosAsync();
+                return Results.Ok(insumoExistente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para eliminar insumos
-            insumos.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar insumos
+            insumos.MapDelete("/{id:int}", async (int id, IRepository<Insumo> repo) =>
             {
-                var insumos = await db.Insumos.FindAsync(id);
-                if (insumos is null) return Results.NotFound();
+                var insumoExistente = await repo.ObtenerPorIdAsync(id);
+                if (insumoExistente is null) return Results.NotFound();
 
-                db.Insumos.Remove(insumos);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(insumoExistente);
+                await repo.GuardarCambiosAsync();
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }

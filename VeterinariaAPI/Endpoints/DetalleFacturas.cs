@@ -1,5 +1,5 @@
 ﻿using VeterinariaAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
 {
@@ -9,44 +9,44 @@ namespace VeterinariaAPI.Endpoints
         {
             var detallefac = app.MapGroup("/api/detallefac").WithTags("DetalleFactura");
 
-            //Api para listar detalle factura
-            detallefac.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar detalle factura
+            detallefac.MapGet("/", async (IRepository<DetallesFactura> repo) =>
             {
-                var listaDetalleFac = await db.DetallesFacturas.ToListAsync();
+                var listaDetalleFac = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaDetalleFac);
             });
 
-            //API para crear un detalle de factura
-            detallefac.MapPost("/", async (DetallesFactura df, VeterinariodbContext db) =>
+            // API para crear un detalle de factura
+            detallefac.MapPost("/", async (DetallesFactura df, IRepository<DetallesFactura> repo) =>
             {
-                db.DetallesFacturas.Add(df);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(df);
+                await repo.GuardarCambiosAsync();
                 return Results.Created($"/api/detallefac/{df.Id}", df);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para editar detalle factura por ID
-            detallefac.MapPut("/{id:int}", async (int id, DetallesFactura df, VeterinariodbContext db) =>
+            // API para editar detalle factura por ID
+            detallefac.MapPut("/{id:int}", async (int id, DetallesFactura df, IRepository<DetallesFactura> repo) =>
             {
-                var detallefac = await db.DetallesFacturas.FindAsync(id);
-                if (detallefac is null) return Results.NotFound();
+                var detallefacExistente = await repo.ObtenerPorIdAsync(id);
+                if (detallefacExistente is null) return Results.NotFound();
 
-                detallefac.FacturaId = df.FacturaId;
-                detallefac.ConsultaId = df.ConsultaId;
-                detallefac.InsumoId = df.InsumoId;
-                detallefac.Subtotal = df.Subtotal;
+                detallefacExistente.FacturaId = df.FacturaId;
+                detallefacExistente.ConsultaId = df.ConsultaId;
+                detallefacExistente.InsumoId = df.InsumoId;
+                detallefacExistente.Subtotal = df.Subtotal;
 
-                await db.SaveChangesAsync();
-                return Results.Ok(detallefac);
+                await repo.GuardarCambiosAsync();
+                return Results.Ok(detallefacExistente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para eliminar un detalle de factura
-            detallefac.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar un detalle de factura
+            detallefac.MapDelete("/{id:int}", async (int id, IRepository<DetallesFactura> repo) =>
             {
-                var detallefac = await db.DetallesFacturas.FindAsync(id);
-                if (detallefac is null) return Results.NotFound();
+                var detallefacExistente = await repo.ObtenerPorIdAsync(id);
+                if (detallefacExistente is null) return Results.NotFound();
 
-                db.DetallesFacturas.Remove(detallefac);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(detallefacExistente);
+                await repo.GuardarCambiosAsync();
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }

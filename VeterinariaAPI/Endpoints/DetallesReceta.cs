@@ -1,5 +1,5 @@
 ﻿using VeterinariaAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
 {
@@ -9,44 +9,44 @@ namespace VeterinariaAPI.Endpoints
         {
             var detallesRe = app.MapGroup("/api/detallesRe").WithTags("DetalleReceta");
 
-            //Api para listar detalles de receta
-            detallesRe.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar detalles de receta
+            detallesRe.MapGet("/", async (IRepository<DetallesRecetum> repo) =>
             {
-                var listaDetallesRe = await db.DetallesReceta.ToListAsync();
+                var listaDetallesRe = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaDetallesRe);
             });
 
-            //API para crear un detalle de receta
-            detallesRe.MapPost("/", async (DetallesRecetum dr, VeterinariodbContext db) =>
+            // API para crear un detalle de receta
+            detallesRe.MapPost("/", async (DetallesRecetum dr, IRepository<DetallesRecetum> repo) =>
             {
-                db.DetallesReceta.Add(dr);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(dr);
+                await repo.GuardarCambiosAsync();
                 return Results.Created($"/api/detallesRe/{dr.Id}", dr);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para editar detalle de receta por ID
-            detallesRe.MapPut("/{id:int}", async (int id, DetallesRecetum dr, VeterinariodbContext db) =>
+            // API para editar detalle de receta por ID
+            detallesRe.MapPut("/{id:int}", async (int id, DetallesRecetum dr, IRepository<DetallesRecetum> repo) =>
             {
-                var detallesRe = await db.DetallesReceta.FindAsync(id);
-                if (detallesRe is null) return Results.NotFound();
+                var detalleReExistente = await repo.ObtenerPorIdAsync(id);
+                if (detalleReExistente is null) return Results.NotFound();
 
-                detallesRe.RecetaId = dr.RecetaId;
-                detallesRe.InsumoId = dr.InsumoId;
-                detallesRe.Dosis = dr.Dosis;
-                detallesRe.DuracionDias = dr.DuracionDias;
+                detalleReExistente.RecetaId = dr.RecetaId;
+                detalleReExistente.InsumoId = dr.InsumoId;
+                detalleReExistente.Dosis = dr.Dosis;
+                detalleReExistente.DuracionDias = dr.DuracionDias;
 
-                await db.SaveChangesAsync();
-                return Results.Ok(detallesRe);
+                await repo.GuardarCambiosAsync();
+                return Results.Ok(detalleReExistente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para eliminar detalles de receta
-            detallesRe.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar detalles de receta
+            detallesRe.MapDelete("/{id:int}", async (int id, IRepository<DetallesRecetum> repo) =>
             {
-                var detallesRe = await db.DetallesReceta.FindAsync(id);
-                if (detallesRe is null) return Results.NotFound();
+                var detalleReExistente = await repo.ObtenerPorIdAsync(id);
+                if (detalleReExistente is null) return Results.NotFound();
 
-                db.DetallesReceta.Remove(detallesRe);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(detalleReExistente);
+                await repo.GuardarCambiosAsync();
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }

@@ -1,5 +1,5 @@
 ﻿using VeterinariaAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
 {
@@ -9,44 +9,44 @@ namespace VeterinariaAPI.Endpoints
         {
             var facturas = app.MapGroup("/api/facturas").WithTags("Facturas");
 
-            //Api para listar facturas
-            facturas.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar facturas
+            facturas.MapGet("/", async (IRepository<Factura> repo) =>
             {
-                var listaFacturas = await db.Facturas.ToListAsync();
+                var listaFacturas = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaFacturas);
             });
 
-            //API para crear una factura
-            facturas.MapPost("/", async (Factura f, VeterinariodbContext db) =>
+            // API para crear una factura
+            facturas.MapPost("/", async (Factura f, IRepository<Factura> repo) =>
             {
-                db.Facturas.Add(f);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(f);
+                await repo.GuardarCambiosAsync();
                 return Results.Created($"/api/facturas/{f.Id}", f);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para editar factura por ID
-            facturas.MapPut("/{id:int}", async (int id, Factura f, VeterinariodbContext db) =>
+            // API para editar factura por ID
+            facturas.MapPut("/{id:int}", async (int id, Factura f, IRepository<Factura> repo) =>
             {
-                var facturas = await db.Facturas.FindAsync(id);
-                if (facturas is null) return Results.NotFound();
+                var facturaExistente = await repo.ObtenerPorIdAsync(id);
+                if (facturaExistente is null) return Results.NotFound();
 
-                facturas.ClienteId = f.ClienteId;
-                facturas.FechaEmision = f.FechaEmision;
-                facturas.MontoImpuestos = f.MontoImpuestos;
-                facturas.MontoTotal = f.MontoTotal;
+                facturaExistente.ClienteId = f.ClienteId;
+                facturaExistente.FechaEmision = f.FechaEmision;
+                facturaExistente.MontoImpuestos = f.MontoImpuestos;
+                facturaExistente.MontoTotal = f.MontoTotal;
 
-                await db.SaveChangesAsync();
-                return Results.Ok(facturas);
+                await repo.GuardarCambiosAsync();
+                return Results.Ok(facturaExistente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para eliminar Facturas
-            facturas.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar Facturas
+            facturas.MapDelete("/{id:int}", async (int id, IRepository<Factura> repo) =>
             {
-                var facturas = await db.Facturas.FindAsync(id);
-                if (facturas is null) return Results.NotFound();
+                var facturaExistente = await repo.ObtenerPorIdAsync(id);
+                if (facturaExistente is null) return Results.NotFound();
 
-                db.Facturas.Remove(facturas);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(facturaExistente);
+                await repo.GuardarCambiosAsync();
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }

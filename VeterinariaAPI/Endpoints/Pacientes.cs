@@ -1,5 +1,5 @@
 ﻿using VeterinariaAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
 {
@@ -9,46 +9,46 @@ namespace VeterinariaAPI.Endpoints
         {
             var pacientes = app.MapGroup("/api/pacientes").WithTags("pacientes");
 
-            //Api para listar pacientes
-            pacientes.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar pacientes
+            pacientes.MapGet("/", async (IRepository<Paciente> repo) =>
             {
-                var listaPacientes = await db.Pacientes.ToListAsync();
+                var listaPacientes = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaPacientes);
             });
 
-            //API para crear un paciente
-            pacientes.MapPost("/", async (Paciente p, VeterinariodbContext db) =>
+            // API para crear un paciente
+            pacientes.MapPost("/", async (Paciente p, IRepository<Paciente> repo) =>
             {
-                db.Pacientes.Add(p);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(p);
+                await repo.GuardarCambiosAsync();
                 return Results.Created($"/api/pacientes/{p.Id}", p);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para editar paciente por ID
-            pacientes.MapPut("/{id:int}", async (int id, Paciente p, VeterinariodbContext db) =>
+            // API para editar paciente por ID
+            pacientes.MapPut("/{id:int}", async (int id, Paciente p, IRepository<Paciente> repo) =>
             {
-                var pacientes = await db.Pacientes.FindAsync(id);
-                if (pacientes is null) return Results.NotFound();
+                var pacienteExistente = await repo.ObtenerPorIdAsync(id);
+                if (pacienteExistente is null) return Results.NotFound();
 
-                pacientes.ClienteId = p.ClienteId;
-                pacientes.Nombre = p.Nombre;
-                pacientes.Especie = p.Especie;
-                pacientes.Raza = p.Raza;
-                pacientes.Peso = p.Peso;
-                pacientes.Alergias = p.Alergias;
+                pacienteExistente.ClienteId = p.ClienteId;
+                pacienteExistente.Nombre = p.Nombre;
+                pacienteExistente.Especie = p.Especie;
+                pacienteExistente.Raza = p.Raza;
+                pacienteExistente.Peso = p.Peso;
+                pacienteExistente.Alergias = p.Alergias;
 
-                await db.SaveChangesAsync();
-                return Results.Ok(pacientes);
+                await repo.GuardarCambiosAsync();
+                return Results.Ok(pacienteExistente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para eliminar pacientes
-            pacientes.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar pacientes
+            pacientes.MapDelete("/{id:int}", async (int id, IRepository<Paciente> repo) =>
             {
-                var pacientes = await db.Pacientes.FindAsync(id);
-                if (pacientes is null) return Results.NotFound();
+                var pacienteExistente = await repo.ObtenerPorIdAsync(id);
+                if (pacienteExistente is null) return Results.NotFound();
 
-                db.Pacientes.Remove(pacientes);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(pacienteExistente);
+                await repo.GuardarCambiosAsync();
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }

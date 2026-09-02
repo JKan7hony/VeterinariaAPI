@@ -1,5 +1,5 @@
 ﻿using VeterinariaAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
 {
@@ -9,43 +9,43 @@ namespace VeterinariaAPI.Endpoints
         {
             var recetas = app.MapGroup("/api/recetas").WithTags("Recetas");
 
-            //Api para listar recetas
-            recetas.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar recetas
+            recetas.MapGet("/", async (IRepository<Receta> repo) =>
             {
-                var listaRecetas = await db.Recetas.ToListAsync();
+                var listaRecetas = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaRecetas);
             });
 
-            //API para crear una receta
-            recetas.MapPost("/", async (Receta r, VeterinariodbContext db) =>
+            // API para crear una receta
+            recetas.MapPost("/", async (Receta r, IRepository<Receta> repo) =>
             {
-                db.Recetas.Add(r);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(r);
+                await repo.GuardarCambiosAsync();
                 return Results.Created($"/api/recetas/{r.Id}", r);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para editar una receta por ID
-            recetas.MapPut("/{id:int}", async (int id, Receta r, VeterinariodbContext db) =>
+            // API para editar una receta por ID
+            recetas.MapPut("/{id:int}", async (int id, Receta r, IRepository<Receta> repo) =>
             {
-                var recetas = await db.Recetas.FindAsync(id);
-                if (recetas is null) return Results.NotFound("La receta no existe");
+                var recetaExistente = await repo.ObtenerPorIdAsync(id);
+                if (recetaExistente is null) return Results.NotFound("La receta no existe");
 
-                recetas.ConsultaId = r.ConsultaId;
-                recetas.FechaEmision = r.FechaEmision;
-                recetas.ValidaHasta = r.ValidaHasta;
+                recetaExistente.ConsultaId = r.ConsultaId;
+                recetaExistente.FechaEmision = r.FechaEmision;
+                recetaExistente.ValidaHasta = r.ValidaHasta;
 
-                await db.SaveChangesAsync();
-                return Results.Ok(recetas);
+                await repo.GuardarCambiosAsync();
+                return Results.Ok(recetaExistente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para eliminar recetas
-            recetas.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar recetas
+            recetas.MapDelete("/{id:int}", async (int id, IRepository<Receta> repo) =>
             {
-                var recetas = await db.Recetas.FindAsync(id);
-                if (recetas is null) return Results.NotFound();
+                var recetaExistente = await repo.ObtenerPorIdAsync(id);
+                if (recetaExistente is null) return Results.NotFound();
 
-                db.Recetas.Remove(recetas);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(recetaExistente);
+                await repo.GuardarCambiosAsync();
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }

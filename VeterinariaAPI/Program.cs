@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using VeterinariaAPI.Services;
+using VeterinariaAPI.Repositories;
+
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -26,6 +30,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
+
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+
 builder.Services.AddAuthorization();
 
 builder.Services.AddOpenApi();
@@ -40,7 +48,7 @@ builder.Services.AddDbContext<VeterinariodbContext>(options =>
 // =========================================================
 var app = builder.Build();
 
-app.UseAuthentication();
+//app.UseAuthentication();
 
 // =========================================================
 // 3. CONFIGURACIÓN DEL PIPELINE HTTP

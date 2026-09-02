@@ -1,5 +1,5 @@
 ﻿using VeterinariaAPI.Models;
-using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
 {
@@ -9,44 +9,44 @@ namespace VeterinariaAPI.Endpoints
         {
             var consultas = app.MapGroup("/api/consultas").WithTags("Consultas");
 
-            //Api para listar consultas
-            consultas.MapGet("/", async (VeterinariodbContext db) =>
+            // API para listar consultas
+            consultas.MapGet("/", async (IRepository<Consulta> repo) =>
             {
-                var listaConsultas = await db.Consultas.ToListAsync();
+                var listaConsultas = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaConsultas);
             });
 
-            //API para crear una consulta
-            consultas.MapPost("/", async (Consulta c, VeterinariodbContext db) =>
+            // API para crear una consulta
+            consultas.MapPost("/", async (Consulta c, IRepository<Consulta> repo) =>
             {
-                db.Consultas.Add(c);
-                await db.SaveChangesAsync();
+                await repo.CrearAsync(c);
+                await repo.GuardarCambiosAsync();
                 return Results.Created($"/api/consultas/{c.Id}", c);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para editar consulta por ID
-            consultas.MapPut("/{id:int}", async (int id, Consulta c, VeterinariodbContext db) =>
+            // API para editar consulta por ID
+            consultas.MapPut("/{id:int}", async (int id, Consulta c, IRepository<Consulta> repo) =>
             {
-                var consultas = await db.Consultas.FindAsync(id);
-                if (consultas is null) return Results.NotFound();
+                var consultaExistente = await repo.ObtenerPorIdAsync(id);
+                if (consultaExistente is null) return Results.NotFound();
 
-                consultas.PacienteId = c.PacienteId;
-                consultas.CitaId = c.CitaId;
-                consultas.Motivo = c.Motivo;
-                consultas.Diagnostico = c.Diagnostico;
+                consultaExistente.PacienteId = c.PacienteId;
+                consultaExistente.CitaId = c.CitaId;
+                consultaExistente.Motivo = c.Motivo;
+                consultaExistente.Diagnostico = c.Diagnostico;
 
-                await db.SaveChangesAsync();
-                return Results.Ok(consultas);
+                await repo.GuardarCambiosAsync();
+                return Results.Ok(consultaExistente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
-            //API para eliminar consultas
-            consultas.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
+            // API para eliminar consultas
+            consultas.MapDelete("/{id:int}", async (int id, IRepository<Consulta> repo) =>
             {
-                var consultas = await db.Consultas.FindAsync(id);
-                if (consultas is null) return Results.NotFound();
+                var consultaExistente = await repo.ObtenerPorIdAsync(id);
+                if (consultaExistente is null) return Results.NotFound();
 
-                db.Consultas.Remove(consultas);
-                await db.SaveChangesAsync();
+                await repo.EliminarAsync(consultaExistente);
+                await repo.GuardarCambiosAsync();
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
