@@ -36,6 +36,7 @@ app.MapInsumosApi();
 app.MapDetalleRecetaApi();
 app.MapCitasApi();
 app.MapRecetaApi();
+app.MapDetalleFacApi();
 
 //Revisar Usuario API
 app.MapUsuariosApi();
