@@ -28,6 +28,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapRolApi();
+app.MapEspecialidadApi();
 
 
 app.Run();
