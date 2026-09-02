@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Pacientes.Add(p);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/pacientes/{p.Id}", p);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para editar paciente por ID
             pacientes.MapPut("/{id:int}", async (int id, Paciente p, VeterinariodbContext db) =>
@@ -39,7 +39,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(pacientes);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para eliminar pacientes
             pacientes.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -50,7 +50,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Pacientes.Remove(pacientes);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
     }
 }

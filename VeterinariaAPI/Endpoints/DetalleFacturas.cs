@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.DetallesFacturas.Add(df);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/detallefac/{df.Id}", df);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para editar detalle factura por ID
             detallefac.MapPut("/{id:int}", async (int id, DetallesFactura df, VeterinariodbContext db) =>
@@ -37,7 +37,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(detallefac);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para eliminar un detalle de factura
             detallefac.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -48,7 +48,7 @@ namespace VeterinariaAPI.Endpoints
                 db.DetallesFacturas.Remove(detallefac);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
     }
 }

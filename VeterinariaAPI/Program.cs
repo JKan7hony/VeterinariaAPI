@@ -2,13 +2,35 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using VeterinariaAPI.Endpoints;
 using VeterinariaAPI.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using VeterinariaAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
 
-// =========================================================
-// 1. REGISTRO DE SERVICIOS (Siempre ANTES de builder.Build)
-// =========================================================
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+builder.Services.AddAuthorization();
+
 builder.Services.AddOpenApi();
+
+builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddDbContext<VeterinariodbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("miconexion")));
@@ -18,6 +40,8 @@ builder.Services.AddDbContext<VeterinariodbContext>(options =>
 // =========================================================
 var app = builder.Build();
 
+app.UseAuthentication();
+
 // =========================================================
 // 3. CONFIGURACIÓN DEL PIPELINE HTTP
 // =========================================================
@@ -26,6 +50,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference(); // Disponible en la ruta /scalar/v1
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapRolApi();
 app.MapEspecialidadApi();

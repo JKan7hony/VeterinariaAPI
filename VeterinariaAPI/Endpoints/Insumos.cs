@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Insumos.Add(i);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/insumos/{i.Id}", i);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para editar insumo por ID
             insumos.MapPut("/{id:int}", async (int id, Insumo i, VeterinariodbContext db) =>
@@ -37,7 +37,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(insumos);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para eliminar insumos
             insumos.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -48,7 +48,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Insumos.Remove(insumos);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
     }
 }

@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Consultas.Add(c);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/consultas/{c.Id}", c);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para editar consulta por ID
             consultas.MapPut("/{id:int}", async (int id, Consulta c, VeterinariodbContext db) =>
@@ -37,7 +37,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(consultas);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para eliminar consultas
             consultas.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -48,7 +48,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Consultas.Remove(consultas);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
     }
 }

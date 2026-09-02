@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Citas.Add(c);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/citas/{c.Id}", c);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para editar rol por ID
             citas.MapPut("/{id:int}", async (int id, Cita c, VeterinariodbContext db) =>
@@ -38,7 +38,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(citas);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para eliminar citas
             citas.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -49,7 +49,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Citas.Remove(citas);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
     }
 }

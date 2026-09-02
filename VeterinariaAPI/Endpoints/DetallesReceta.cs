@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.DetallesReceta.Add(dr);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/detallesRe/{dr.Id}", dr);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para editar detalle de receta por ID
             detallesRe.MapPut("/{id:int}", async (int id, DetallesRecetum dr, VeterinariodbContext db) =>
@@ -37,7 +37,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(detallesRe);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para eliminar detalles de receta
             detallesRe.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -48,7 +48,7 @@ namespace VeterinariaAPI.Endpoints
                 db.DetallesReceta.Remove(detallesRe);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
     }
 }

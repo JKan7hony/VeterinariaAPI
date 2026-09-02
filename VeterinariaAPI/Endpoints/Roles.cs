@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Roles.Add(r);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/roles/{r.Id}", r);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para editar rol por ID
             roles.MapPut("/{id:int}", async (int id, Role r, VeterinariodbContext db) =>
@@ -35,7 +35,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(roles);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para eliminar roles
             roles.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -46,7 +46,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Roles.Remove(roles);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
     }
 }

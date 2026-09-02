@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Recetas.Add(r);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/recetas/{r.Id}", r);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para editar una receta por ID
             recetas.MapPut("/{id:int}", async (int id, Receta r, VeterinariodbContext db) =>
@@ -36,7 +36,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(recetas);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             //API para eliminar recetas
             recetas.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -47,7 +47,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Recetas.Remove(recetas);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
     }
 }

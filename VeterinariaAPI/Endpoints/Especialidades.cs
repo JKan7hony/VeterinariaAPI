@@ -22,7 +22,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Especialidades.Add(e);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/especialidades/{e.Id}", e);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
             //API para editar especialidad por ID
             especialidad.MapPut("/{id:int}", async (int id, Especialidade e, VeterinariodbContext db) =>
@@ -35,7 +35,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await db.SaveChangesAsync();
                 return Results.Ok(especialidades);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
             //API para eliminar especialidades
             especialidad.MapDelete("/{id:int}", async (int id, VeterinariodbContext db) =>
@@ -46,7 +46,7 @@ namespace VeterinariaAPI.Endpoints
                 db.Especialidades.Remove(especialidades);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
         }
     }
 }
