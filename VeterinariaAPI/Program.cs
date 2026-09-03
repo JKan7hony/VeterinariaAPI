@@ -1,17 +1,24 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using System.Text;
+using System.Text.Json.Serialization;
 using VeterinariaAPI.Endpoints;
 using VeterinariaAPI.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using VeterinariaAPI.Services;
 using VeterinariaAPI.Repositories;
-
-
-
+using VeterinariaAPI.Services;
+using VeterinariaAPI.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configuración de JSON para evitar errores por ciclos de navegación en EF Core
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
+
+// Configuración de JWT
 var jwtKey = builder.Configuration["Jwt:Key"];
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
@@ -31,37 +38,36 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Inyección de Dependencias (Repositorios y Servicios)
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddAuthorization();
-
 builder.Services.AddOpenApi();
-
-builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddDbContext<VeterinariodbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("miconexion")));
 
 // =========================================================
-// 2. CONSTRUIR LA APLICACIÓN
+// CONSTRUIR LA APLICACIÓN
 // =========================================================
 var app = builder.Build();
 
-//app.UseAuthentication();
-
 // =========================================================
-// 3. CONFIGURACIÓN DEL PIPELINE HTTP
+// CONFIGURACIÓN DEL PIPELINE HTTP
 // =========================================================
+app.UseMiddleware<GlobalExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference(); // Disponible en la ruta /scalar/v1
+    app.MapScalarApiReference();
 }
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Mapeo de Endpoints
 app.MapRolApi();
 app.MapEspecialidadApi();
 app.MapClienteApi();
@@ -73,7 +79,10 @@ app.MapCitasApi();
 app.MapRecetaApi();
 app.MapDetalleFacApi();
 app.MapConsultasApi();
-
-//Revisar Usuario API
 app.MapUsuariosApi();
+app.MapGet("/api/test-error", () =>
+{
+    throw new Exception("Prueba de falla capturada por el middleware");
+});
+
 app.Run();
