@@ -7,7 +7,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapCitasApi(this WebApplication app)
         {
-            var citas = app.MapGroup("/api/citas").WithTags("Citas");
+            var citas = app.MapGroup("/api/v1/citas").WithTags("Citas (v1)");
 
             // Api para listar citas
             citas.MapGet("/", async (IRepository<Cita> repo) =>

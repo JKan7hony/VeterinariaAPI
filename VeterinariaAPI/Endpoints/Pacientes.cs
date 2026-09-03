@@ -7,7 +7,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapPacientesApi(this WebApplication app)
         {
-            var pacientes = app.MapGroup("/api/pacientes").WithTags("pacientes");
+            var pacientes = app.MapGroup("/api/v1/pacientes").WithTags("pacientes(v1)");
 
             // API para listar pacientes
             pacientes.MapGet("/", async (IRepository<Paciente> repo) =>

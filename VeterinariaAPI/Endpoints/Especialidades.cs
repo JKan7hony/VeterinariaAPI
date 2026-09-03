@@ -7,7 +7,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapEspecialidadApi(this WebApplication app)
         {
-            var especialidad = app.MapGroup("/api/especialidades").WithTags("Especialidad");
+            var especialidad = app.MapGroup("/api/v1/especialidades").WithTags("Especialidad(v1)");
 
             // API para listar especialidades
             especialidad.MapGet("/", async (IRepository<Especialidade> repo) =>

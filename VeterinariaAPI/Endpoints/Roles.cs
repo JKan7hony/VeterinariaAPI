@@ -7,7 +7,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapRolApi(this WebApplication app)
         {
-            var roles = app.MapGroup("/api/roles").WithTags("Roles");
+            var roles = app.MapGroup("/api/v1/roles").WithTags("Roles(v1)");
 
             // API para listar roles
             roles.MapGet("/", async (IRepository<Role> repo) =>

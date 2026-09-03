@@ -7,7 +7,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapRecetaApi(this WebApplication app)
         {
-            var recetas = app.MapGroup("/api/recetas").WithTags("Recetas");
+            var recetas = app.MapGroup("/api/v1/recetas").WithTags("Recetas(v1)");
 
             // API para listar recetas
             recetas.MapGet("/", async (IRepository<Receta> repo) =>

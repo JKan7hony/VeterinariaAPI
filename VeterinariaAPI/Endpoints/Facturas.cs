@@ -7,7 +7,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapFacturasApi(this WebApplication app)
         {
-            var facturas = app.MapGroup("/api/facturas").WithTags("Facturas");
+            var facturas = app.MapGroup("/api/v1/facturas").WithTags("Facturas (v1)");
 
             // API para listar facturas
             facturas.MapGet("/", async (IRepository<Factura> repo) =>

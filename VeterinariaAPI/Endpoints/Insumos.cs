@@ -7,7 +7,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapInsumosApi(this WebApplication app)
         {
-            var insumos = app.MapGroup("/api/insumos").WithTags("Insumos");
+            var insumos = app.MapGroup("/api/v1/insumos").WithTags("Insumos(v1)");
 
             // API para listar insumos
             insumos.MapGet("/", async (IRepository<Insumo> repo) =>
