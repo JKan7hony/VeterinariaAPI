@@ -1,4 +1,6 @@
-﻿using VeterinariaAPI.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using VeterinariaAPI.Extensions;
+using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
@@ -7,7 +9,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapDetalleFacApi(this WebApplication app)
         {
-            var detallefac = app.MapGroup("/api/v1/detallefac").WithTags("DetalleFactura(v1)");
+            var detallefac = app.MapGroup("/api/v1/detallefac").WithTags("DetalleFactura (v1)");
 
             // API para listar detalle factura
             detallefac.MapGet("/", async (IRepository<DetallesFactura> repo) =>
@@ -17,23 +19,44 @@ namespace VeterinariaAPI.Endpoints
             });
 
             // API para crear un detalle de factura
-            detallefac.MapPost("/", async (DetallesFactura df, IRepository<DetallesFactura> repo) =>
+            detallefac.MapPost("/", async (DetalleFacturaCreateDto dto, IRepository<DetallesFactura> repo) =>
             {
-                await repo.CrearAsync(df);
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
+                var nuevoDetalle = new DetallesFactura
+                {
+                    FacturaId = dto.FacturaId,
+                    ConsultaId = dto.ConsultaId,
+                    InsumoId = dto.InsumoId,
+                    Subtotal = dto.Subtotal
+                };
+
+                await repo.CrearAsync(nuevoDetalle);
                 await repo.GuardarCambiosAsync();
-                return Results.Created($"/api/detallefac/{df.Id}", df);
+
+                return Results.Created($"/api/v1/detallefac/{nuevoDetalle.Id}", nuevoDetalle);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             // API para editar detalle factura por ID
-            detallefac.MapPut("/{id:int}", async (int id, DetallesFactura df, IRepository<DetallesFactura> repo) =>
+            detallefac.MapPut("/{id:int}", async (int id, DetalleFacturaCreateDto dto, IRepository<DetallesFactura> repo) =>
             {
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
                 var detallefacExistente = await repo.ObtenerPorIdAsync(id);
                 if (detallefacExistente is null) return Results.NotFound();
 
-                detallefacExistente.FacturaId = df.FacturaId;
-                detallefacExistente.ConsultaId = df.ConsultaId;
-                detallefacExistente.InsumoId = df.InsumoId;
-                detallefacExistente.Subtotal = df.Subtotal;
+                detallefacExistente.FacturaId = dto.FacturaId;
+                detallefacExistente.ConsultaId = dto.ConsultaId;
+                detallefacExistente.InsumoId = dto.InsumoId;
+                detallefacExistente.Subtotal = dto.Subtotal;
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(detallefacExistente);
@@ -50,5 +73,20 @@ namespace VeterinariaAPI.Endpoints
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
+
+        // DTO estructurado con el prefijo 'property:' para la correcta validación por reflexión
+        public record DetalleFacturaCreateDto(
+            [property: Required(ErrorMessage = "El ID de la factura es obligatorio.")]
+            [property: Range(1, int.MaxValue, ErrorMessage = "El ID de la factura debe ser un número entero positivo.")]
+            int FacturaId,
+
+            int? ConsultaId,
+
+            int? InsumoId,
+
+            [property: Required(ErrorMessage = "El subtotal es obligatorio.")]
+            [property: Range(0.01, 10000000.0, ErrorMessage = "El subtotal debe ser mayor a 0.")]
+            decimal Subtotal
+        );
     }
 }

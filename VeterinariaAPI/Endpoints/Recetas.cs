@@ -1,4 +1,6 @@
-﻿using VeterinariaAPI.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using VeterinariaAPI.Extensions;
+using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
@@ -7,7 +9,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapRecetaApi(this WebApplication app)
         {
-            var recetas = app.MapGroup("/api/v1/recetas").WithTags("Recetas(v1)");
+            var recetas = app.MapGroup("/api/v1/recetas").WithTags("Recetas (v1)");
 
             // API para listar recetas
             recetas.MapGet("/", async (IRepository<Receta> repo) =>
@@ -17,22 +19,42 @@ namespace VeterinariaAPI.Endpoints
             });
 
             // API para crear una receta
-            recetas.MapPost("/", async (Receta r, IRepository<Receta> repo) =>
+            recetas.MapPost("/", async (RecetaCreateDto dto, IRepository<Receta> repo) =>
             {
-                await repo.CrearAsync(r);
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
+                var nuevaReceta = new Receta
+                {
+                    ConsultaId = dto.ConsultaId,
+                    FechaEmision = dto.FechaEmision,
+                    ValidaHasta = dto.ValidaHasta
+                };
+
+                await repo.CrearAsync(nuevaReceta);
                 await repo.GuardarCambiosAsync();
-                return Results.Created($"/api/recetas/{r.Id}", r);
+
+                return Results.Created($"/api/v1/recetas/{nuevaReceta.Id}", nuevaReceta);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             // API para editar una receta por ID
-            recetas.MapPut("/{id:int}", async (int id, Receta r, IRepository<Receta> repo) =>
+            recetas.MapPut("/{id:int}", async (int id, RecetaCreateDto dto, IRepository<Receta> repo) =>
             {
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
                 var recetaExistente = await repo.ObtenerPorIdAsync(id);
                 if (recetaExistente is null) return Results.NotFound("La receta no existe");
 
-                recetaExistente.ConsultaId = r.ConsultaId;
-                recetaExistente.FechaEmision = r.FechaEmision;
-                recetaExistente.ValidaHasta = r.ValidaHasta;
+                recetaExistente.ConsultaId = dto.ConsultaId;
+                recetaExistente.FechaEmision = dto.FechaEmision;
+                recetaExistente.ValidaHasta = dto.ValidaHasta;
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(recetaExistente);
@@ -49,5 +71,18 @@ namespace VeterinariaAPI.Endpoints
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
+
+        // DTO estructurado con el prefijo 'property:' para la correcta validación por reflexión
+        public record RecetaCreateDto(
+            [property: Required(ErrorMessage = "El ID de la consulta es obligatorio.")]
+            [property: Range(1, int.MaxValue, ErrorMessage = "El ID de la consulta debe ser un número entero positivo.")]
+            int ConsultaId,
+
+            [property: Required(ErrorMessage = "La fecha de emisión es obligatoria.")]
+            DateOnly FechaEmision,
+
+            [property: Required(ErrorMessage = "La fecha de vencimiento (Válida Hasta) es obligatoria.")]
+            DateOnly ValidaHasta
+        );
     }
 }

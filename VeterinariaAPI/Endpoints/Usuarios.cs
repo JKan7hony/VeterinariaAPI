@@ -1,7 +1,9 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using System.ComponentModel.DataAnnotations;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
 using VeterinariaAPI.Services;
@@ -12,9 +14,9 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapUsuariosApi(this WebApplication app)
         {
-            var usuarios = app.MapGroup("/api/v1/usuarios").WithTags("Usuarios(v1)");
+            var usuarios = app.MapGroup("/api/v1/usuarios").WithTags("Usuarios (v1)");
 
-            // API para listar usuarios (obtenidos desde el Repositorio)
+            // API para listar usuarios
             usuarios.MapGet("/", async (IUsuarioRepository repo) =>
             {
                 var listaUsuarios = await repo.ObtenerTodosAsync();
@@ -33,6 +35,13 @@ namespace VeterinariaAPI.Endpoints
             // API para registrar/crear un usuario
             usuarios.MapPost("/register", async (UsuarioRegisterDto dto, IUsuarioRepository repo, AuthService auth) =>
             {
+                // Validar DTO antes de procesar
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
                 var nuevoUsuario = new Usuario
                 {
                     RolId = dto.RolId,
@@ -45,7 +54,7 @@ namespace VeterinariaAPI.Endpoints
                 await repo.CrearAsync(nuevoUsuario);
                 await repo.GuardarCambiosAsync();
 
-                return Results.Created($"/api/usuarios/{nuevoUsuario.Id}", new
+                return Results.Created($"/api/v1/usuarios/{nuevoUsuario.Id}", new
                 {
                     nuevoUsuario.Id,
                     nuevoUsuario.NombreCompleto,
@@ -57,7 +66,13 @@ namespace VeterinariaAPI.Endpoints
             // API para Iniciar Sesión (Login) y obtener JWT Token
             usuarios.MapPost("/login", async (LoginRequest login, IUsuarioRepository repo, AuthService auth, IConfiguration config) =>
             {
-                // Obtenemos el usuario e incluimos su Rol mediante el Repositorio
+                // Validar credenciales de entrada
+                var errores = login.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
                 var usuario = await repo.ObtenerPorEmailAsync(login.Email);
 
                 if (usuario is null || !auth.VerifyPassword(usuario, login.Password))
@@ -90,7 +105,7 @@ namespace VeterinariaAPI.Endpoints
                 return Results.Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
             });
 
-            // API para eliminar usuario por ID (Protegida por Roles)
+            // API para eliminar usuario por ID
             usuarios.MapDelete("/{id:int}", async (int id, IUsuarioRepository repo) =>
             {
                 var usuario = await repo.ObtenerPorIdAsync(id);
@@ -103,8 +118,31 @@ namespace VeterinariaAPI.Endpoints
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
 
-        // DTOs para estructurar las peticiones de entrada
-        public record UsuarioRegisterDto(int RolId, string NombreCompleto, string Email, string Password);
-        public record LoginRequest(string Email, string Password);
+        // DTOs estructurados con el prefijo 'property:' para la correcta validación por reflexión
+        public record UsuarioRegisterDto(
+            [property: Required(ErrorMessage = "El ID de rol es obligatorio.")]
+            int RolId,
+
+            [property: Required(ErrorMessage = "El nombre completo es obligatorio.")]
+            [property: StringLength(100, MinimumLength = 3, ErrorMessage = "El nombre debe tener entre 3 y 100 caracteres.")]
+            string NombreCompleto,
+
+            [property: Required(ErrorMessage = "El correo electrónico es obligatorio.")]
+            [property: EmailAddress(ErrorMessage = "El formato del correo electrónico no es válido.")]
+            string Email,
+
+            [property: Required(ErrorMessage = "La contraseña es obligatoria.")]
+            [property: MinLength(6, ErrorMessage = "La contraseña debe tener al menos 6 caracteres.")]
+            string Password
+        );
+
+        public record LoginRequest(
+            [property: Required(ErrorMessage = "El correo electrónico es obligatorio.")]
+            [property: EmailAddress(ErrorMessage = "El formato del correo electrónico no es válido.")]
+            string Email,
+
+            [property: Required(ErrorMessage = "La contraseña es obligatoria.")]
+            string Password
+        );
     }
 }

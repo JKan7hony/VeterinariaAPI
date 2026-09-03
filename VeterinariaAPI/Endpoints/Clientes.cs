@@ -1,4 +1,6 @@
-﻿using VeterinariaAPI.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using VeterinariaAPI.Extensions;
+using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
@@ -17,23 +19,44 @@ namespace VeterinariaAPI.Endpoints
             });
 
             // API para crear un cliente
-            clientes.MapPost("/", async (Cliente c, IRepository<Cliente> repo) =>
+            clientes.MapPost("/", async (ClienteCreateDto dto, IRepository<Cliente> repo) =>
             {
-                await repo.CrearAsync(c);
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
+                var nuevoCliente = new Cliente
+                {
+                    DocumentoIdentidad = dto.DocumentoIdentidad,
+                    NombreCompleto = dto.NombreCompleto,
+                    Telefono = dto.Telefono,
+                    Email = dto.Email
+                };
+
+                await repo.CrearAsync(nuevoCliente);
                 await repo.GuardarCambiosAsync();
-                return Results.Created($"/api/clientes/{c.Id}", c);
+
+                return Results.Created($"/api/v1/clientes/{nuevoCliente.Id}", nuevoCliente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             // API para editar un cliente por ID
-            clientes.MapPut("/{id:int}", async (int id, Cliente c, IRepository<Cliente> repo) =>
+            clientes.MapPut("/{id:int}", async (int id, ClienteCreateDto dto, IRepository<Cliente> repo) =>
             {
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
                 var clienteExistente = await repo.ObtenerPorIdAsync(id);
                 if (clienteExistente is null) return Results.NotFound();
 
-                clienteExistente.DocumentoIdentidad = c.DocumentoIdentidad;
-                clienteExistente.NombreCompleto = c.NombreCompleto;
-                clienteExistente.Telefono = c.Telefono;
-                clienteExistente.Email = c.Email;
+                clienteExistente.DocumentoIdentidad = dto.DocumentoIdentidad;
+                clienteExistente.NombreCompleto = dto.NombreCompleto;
+                clienteExistente.Telefono = dto.Telefono;
+                clienteExistente.Email = dto.Email;
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(clienteExistente);
@@ -50,5 +73,24 @@ namespace VeterinariaAPI.Endpoints
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
         }
+
+        // DTO estructurado con el prefijo 'property:' para la correcta validación por reflexión
+        public record ClienteCreateDto(
+            [property: Required(ErrorMessage = "El documento de identidad es obligatorio.")]
+            [property: StringLength(20, ErrorMessage = "El documento de identidad no puede superar los 20 caracteres.")]
+            string DocumentoIdentidad,
+
+            [property: Required(ErrorMessage = "El nombre completo es obligatorio.")]
+            [property: StringLength(100, MinimumLength = 3, ErrorMessage = "El nombre completo debe tener entre 3 y 100 caracteres.")]
+            string NombreCompleto,
+
+            [property: Required(ErrorMessage = "El teléfono es obligatorio.")]
+            [property: Phone(ErrorMessage = "El formato del teléfono no es válido.")]
+            string Telefono,
+
+            [property: Required(ErrorMessage = "El correo electrónico es obligatorio.")]
+            [property: EmailAddress(ErrorMessage = "El formato del correo electrónico no es válido.")]
+            string Email
+        );
     }
 }

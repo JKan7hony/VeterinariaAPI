@@ -1,4 +1,6 @@
-﻿using VeterinariaAPI.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using VeterinariaAPI.Extensions;
+using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
@@ -7,7 +9,7 @@ namespace VeterinariaAPI.Endpoints
     {
         public static void MapConsultasApi(this WebApplication app)
         {
-            var consultas = app.MapGroup("/api/v1/consultas").WithTags("Consultas(v1)");
+            var consultas = app.MapGroup("/api/v1/consultas").WithTags("Consultas (v1)");
 
             // API para listar consultas
             consultas.MapGet("/", async (IRepository<Consulta> repo) =>
@@ -17,23 +19,44 @@ namespace VeterinariaAPI.Endpoints
             });
 
             // API para crear una consulta
-            consultas.MapPost("/", async (Consulta c, IRepository<Consulta> repo) =>
+            consultas.MapPost("/", async (ConsultaCreateDto dto, IRepository<Consulta> repo) =>
             {
-                await repo.CrearAsync(c);
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
+                var nuevaConsulta = new Consulta
+                {
+                    PacienteId = dto.PacienteId,
+                    CitaId = dto.CitaId,
+                    Motivo = dto.Motivo,
+                    Diagnostico = dto.Diagnostico
+                };
+
+                await repo.CrearAsync(nuevaConsulta);
                 await repo.GuardarCambiosAsync();
-                return Results.Created($"/api/consultas/{c.Id}", c);
+
+                return Results.Created($"/api/v1/consultas/{nuevaConsulta.Id}", nuevaConsulta);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             // API para editar consulta por ID
-            consultas.MapPut("/{id:int}", async (int id, Consulta c, IRepository<Consulta> repo) =>
+            consultas.MapPut("/{id:int}", async (int id, ConsultaCreateDto dto, IRepository<Consulta> repo) =>
             {
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
                 var consultaExistente = await repo.ObtenerPorIdAsync(id);
                 if (consultaExistente is null) return Results.NotFound();
 
-                consultaExistente.PacienteId = c.PacienteId;
-                consultaExistente.CitaId = c.CitaId;
-                consultaExistente.Motivo = c.Motivo;
-                consultaExistente.Diagnostico = c.Diagnostico;
+                consultaExistente.PacienteId = dto.PacienteId;
+                consultaExistente.CitaId = dto.CitaId;
+                consultaExistente.Motivo = dto.Motivo;
+                consultaExistente.Diagnostico = dto.Diagnostico;
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(consultaExistente);
@@ -50,5 +73,22 @@ namespace VeterinariaAPI.Endpoints
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
+
+        // DTO estructurado con el prefijo 'property:' para la correcta validación por reflexión
+        public record ConsultaCreateDto(
+            [property: Required(ErrorMessage = "El ID del paciente es obligatorio.")]
+            [property: Range(1, int.MaxValue, ErrorMessage = "El ID del paciente debe ser un número entero positivo.")]
+            int PacienteId,
+
+            int? CitaId,
+
+            [property: Required(ErrorMessage = "El motivo de la consulta es obligatorio.")]
+            [property: StringLength(250, MinimumLength = 3, ErrorMessage = "El motivo debe tener entre 3 y 250 caracteres.")]
+            string Motivo,
+
+            [property: Required(ErrorMessage = "El diagnóstico es obligatorio.")]
+            [property: StringLength(1000, MinimumLength = 3, ErrorMessage = "El diagnóstico debe tener entre 3 y 1000 caracteres.")]
+            string Diagnostico
+        );
     }
 }

@@ -1,4 +1,6 @@
-﻿using VeterinariaAPI.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using VeterinariaAPI.Extensions;
+using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
 
 namespace VeterinariaAPI.Endpoints
@@ -9,7 +11,7 @@ namespace VeterinariaAPI.Endpoints
         {
             var citas = app.MapGroup("/api/v1/citas").WithTags("Citas (v1)");
 
-            // Api para listar citas
+            // API para listar citas
             citas.MapGet("/", async (IRepository<Cita> repo) =>
             {
                 var listarCitas = await repo.ObtenerTodosAsync();
@@ -17,24 +19,48 @@ namespace VeterinariaAPI.Endpoints
             });
 
             // API para crear una cita
-            citas.MapPost("/", async (Cita c, IRepository<Cita> repo) =>
+            citas.MapPost("/", async (CitaCreateDto dto, IRepository<Cita> repo) =>
             {
-                await repo.CrearAsync(c);
+                // Validación estructurada del DTO
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
+                var nuevaCita = new Cita
+                {
+                    PacienteId = dto.PacienteId,
+                    UsuarioId = dto.UsuarioId,
+                    EspecialidadId = dto.EspecialidadId,
+                    FechaHora = dto.FechaHora,
+                    Estado = dto.Estado
+                };
+
+                await repo.CrearAsync(nuevaCita);
                 await repo.GuardarCambiosAsync();
-                return Results.Created($"/api/citas/{c.Id}", c);
+
+                return Results.Created($"/api/v1/citas/{nuevaCita.Id}", nuevaCita);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             // API para editar una cita por ID
-            citas.MapPut("/{id:int}", async (int id, Cita c, IRepository<Cita> repo) =>
+            citas.MapPut("/{id:int}", async (int id, CitaCreateDto dto, IRepository<Cita> repo) =>
             {
+                // Validación estructurada del DTO
+                var errores = dto.Validar();
+                if (errores.Count > 0)
+                {
+                    return Results.ValidationProblem(errores);
+                }
+
                 var citaExistente = await repo.ObtenerPorIdAsync(id);
                 if (citaExistente is null) return Results.NotFound();
 
-                citaExistente.PacienteId = c.PacienteId;
-                citaExistente.UsuarioId = c.UsuarioId;
-                citaExistente.EspecialidadId = c.EspecialidadId;
-                citaExistente.FechaHora = c.FechaHora;
-                citaExistente.Estado = c.Estado;
+                citaExistente.PacienteId = dto.PacienteId;
+                citaExistente.UsuarioId = dto.UsuarioId;
+                citaExistente.EspecialidadId = dto.EspecialidadId;
+                citaExistente.FechaHora = dto.FechaHora;
+                citaExistente.Estado = dto.Estado;
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(citaExistente);
@@ -51,5 +77,27 @@ namespace VeterinariaAPI.Endpoints
                 return Results.NoContent();
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
         }
+
+        // DTO de entrada estructurado con reglas de validación
+        public record CitaCreateDto(
+            [Required(ErrorMessage = "El ID del paciente es obligatorio.")]
+            [Range(1, int.MaxValue, ErrorMessage = "El ID del paciente debe ser un número entero positivo.")]
+            int PacienteId,
+
+            [Required(ErrorMessage = "El ID del usuario/veterinario es obligatorio.")]
+            [Range(1, int.MaxValue, ErrorMessage = "El ID del usuario debe ser un número entero positivo.")]
+            int UsuarioId,
+
+            [Required(ErrorMessage = "El ID de la especialidad es obligatorio.")]
+            [Range(1, int.MaxValue, ErrorMessage = "El ID de la especialidad debe ser un número entero positivo.")]
+            int EspecialidadId,
+
+            [Required(ErrorMessage = "La fecha y hora de la cita son obligatorias.")]
+            DateTime FechaHora,
+
+            [Required(ErrorMessage = "El estado de la cita es obligatorio.")]
+            [StringLength(50, ErrorMessage = "El estado no puede superar los 50 caracteres.")]
+            string Estado
+        );
     }
 }
