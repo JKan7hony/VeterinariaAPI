@@ -235,3 +235,5 @@ app.MapGet("/api/test-error", () =>
 });
 
 app.Run();
+
+public partial class Program { }
