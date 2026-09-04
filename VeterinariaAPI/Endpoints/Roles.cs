@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaRoles = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaRoles);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
             // API para crear un rol
             roles.MapPost("/", async (RoleCreateDto dto, IRepository<Role> repo) =>
@@ -37,7 +37,7 @@ namespace VeterinariaAPI.Endpoints
                 await repo.GuardarCambiosAsync();
 
                 return Results.Created($"/api/v1/roles/{nuevoRol.Id}", nuevoRol);
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
             // API para editar rol por ID
             roles.MapPut("/{id:int}", async (int id, RoleCreateDto dto, IRepository<Role> repo) =>
@@ -56,7 +56,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(rolExistente);
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
             // API para eliminar roles
             roles.MapDelete("/{id:int}", async (int id, IRepository<Role> repo) =>
@@ -67,7 +67,7 @@ namespace VeterinariaAPI.Endpoints
                 await repo.EliminarAsync(rolExistente);
                 await repo.GuardarCambiosAsync();
                 return Results.NoContent();
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
         }
 
         // DTO estructurado con el prefijo 'property:' para que ValidationContext detecte las reglas

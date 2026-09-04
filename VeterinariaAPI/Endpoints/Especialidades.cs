@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaEspecialidades = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaEspecialidades);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             // API para crear una especialidad
             especialidad.MapPost("/", async (EspecialidadCreateDto dto, IRepository<Especialidade> repo) =>

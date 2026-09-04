@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaRecetas = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaRecetas);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear una receta
             recetas.MapPost("/", async (RecetaCreateDto dto, IRepository<Receta> repo) =>

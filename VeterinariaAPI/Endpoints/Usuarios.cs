@@ -30,7 +30,7 @@ namespace VeterinariaAPI.Endpoints
                 });
 
                 return Results.Ok(respuesta);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
             // API para registrar/crear un usuario (Protegido con AuthPolicy)
             usuarios.MapPost("/register", async (UsuarioRegisterDto dto, IUsuarioRepository repo, AuthService auth) =>

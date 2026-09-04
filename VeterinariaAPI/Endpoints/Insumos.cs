@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaInsumos = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaInsumos);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear un insumo
             insumos.MapPost("/", async (InsumoCreateDto dto, IRepository<Insumo> repo) =>

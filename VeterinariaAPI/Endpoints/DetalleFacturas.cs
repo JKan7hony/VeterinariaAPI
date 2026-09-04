@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaDetalleFac = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaDetalleFac);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear un detalle de factura
             detallefac.MapPost("/", async (DetalleFacturaCreateDto dto, IRepository<DetallesFactura> repo) =>

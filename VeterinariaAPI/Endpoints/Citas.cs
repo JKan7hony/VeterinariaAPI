@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listarCitas = await repo.ObtenerTodosAsync();
                 return Results.Ok(listarCitas);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear una cita
             citas.MapPost("/", async (CitaCreateDto dto, IRepository<Cita> repo) =>

@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaConsultas = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaConsultas);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear una consulta
             consultas.MapPost("/", async (ConsultaCreateDto dto, IRepository<Consulta> repo) =>

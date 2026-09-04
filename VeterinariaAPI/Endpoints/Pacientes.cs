@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaPacientes = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaPacientes);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear un paciente
             pacientes.MapPost("/", async (PacienteCreateDto dto, IRepository<Paciente> repo) =>
