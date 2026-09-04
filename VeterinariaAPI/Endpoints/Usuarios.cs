@@ -32,7 +32,7 @@ namespace VeterinariaAPI.Endpoints
                 return Results.Ok(respuesta);
             });
 
-            // API para registrar/crear un usuario
+            // API para registrar/crear un usuario (Protegido con AuthPolicy)
             usuarios.MapPost("/register", async (UsuarioRegisterDto dto, IUsuarioRepository repo, AuthService auth) =>
             {
                 // Validar DTO antes de procesar
@@ -61,9 +61,9 @@ namespace VeterinariaAPI.Endpoints
                     nuevoUsuario.Email,
                     nuevoUsuario.RolId
                 });
-            });
+            }).RequireRateLimiting("AuthPolicy");
 
-            // API para Iniciar Sesión (Login) y obtener JWT Token
+            // API para Iniciar Sesión (Login) y obtener JWT Token (Protegido con AuthPolicy)
             usuarios.MapPost("/login", async (LoginRequest login, IUsuarioRepository repo, AuthService auth, IConfiguration config) =>
             {
                 // Validar credenciales de entrada
@@ -103,7 +103,7 @@ namespace VeterinariaAPI.Endpoints
                 );
 
                 return Results.Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
-            });
+            }).RequireRateLimiting("AuthPolicy");
 
             // API para eliminar usuario por ID
             usuarios.MapDelete("/{id:int}", async (int id, IUsuarioRepository repo) =>
