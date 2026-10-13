@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,10 +12,49 @@ namespace VeterinariaAPI.Endpoints
         {
             var insumos = app.MapGroup("/api/v1/insumos").WithTags("Insumos (v1)");
 
-            // API para listar insumos
-            insumos.MapGet("/", async (IRepository<Insumo> repo) =>
+            // API para listar insumos con filtros
+            insumos.MapGet("/", async (
+                string? nombre,
+                string? tipo,
+                int? stockMinimo,
+                int? stockMaximo,
+                decimal? precioMin,
+                decimal? precioMax,
+                IRepository<Insumo> repo) =>
             {
-                var listaInsumos = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (!string.IsNullOrWhiteSpace(nombre))
+                {
+                    query = query.Where(i => i.NombreProducto.Contains(nombre));
+                }
+
+                if (!string.IsNullOrWhiteSpace(tipo))
+                {
+                    query = query.Where(i => i.Tipo.Contains(tipo));
+                }
+
+                if (stockMinimo.HasValue)
+                {
+                    query = query.Where(i => i.StockActual >= stockMinimo.Value);
+                }
+
+                if (stockMaximo.HasValue)
+                {
+                    query = query.Where(i => i.StockActual <= stockMaximo.Value);
+                }
+
+                if (precioMin.HasValue)
+                {
+                    query = query.Where(i => i.PrecioUnitario >= precioMin.Value);
+                }
+
+                if (precioMax.HasValue)
+                {
+                    query = query.Where(i => i.PrecioUnitario <= precioMax.Value);
+                }
+
+                var listaInsumos = await query.ToListAsync();
                 return Results.Ok(listaInsumos);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 

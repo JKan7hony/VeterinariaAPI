@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,10 +12,44 @@ namespace VeterinariaAPI.Endpoints
         {
             var pacientes = app.MapGroup("/api/v1/pacientes").WithTags("Pacientes (v1)");
 
-            // API para listar pacientes
-            pacientes.MapGet("/", async (IRepository<Paciente> repo) =>
+            // API para listar pacientes con filtros
+            pacientes.MapGet("/", async (
+                int? clienteId,
+                string? dueno,
+                string? nombre,
+                string? especie,
+                string? raza,
+                IRepository<Paciente> repo) =>
             {
-                var listaPacientes = await repo.ObtenerTodosAsync();
+                var query = repo.Query().Include(p => p.Cliente).AsQueryable();
+
+                if (clienteId.HasValue)
+                {
+                    query = query.Where(p => p.ClienteId == clienteId.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(dueno))
+                {
+                    query = query.Where(p => p.Cliente != null && 
+                        (p.Cliente.NombreCompleto.Contains(dueno) || p.Cliente.DocumentoIdentidad.Contains(dueno)));
+                }
+
+                if (!string.IsNullOrWhiteSpace(nombre))
+                {
+                    query = query.Where(p => p.Nombre.Contains(nombre));
+                }
+
+                if (!string.IsNullOrWhiteSpace(especie))
+                {
+                    query = query.Where(p => p.Especie.Contains(especie));
+                }
+
+                if (!string.IsNullOrWhiteSpace(raza))
+                {
+                    query = query.Where(p => p.Raza != null && p.Raza.Contains(raza));
+                }
+
+                var listaPacientes = await query.ToListAsync();
                 return Results.Ok(listaPacientes);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 

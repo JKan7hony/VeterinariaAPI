@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,10 +12,25 @@ namespace VeterinariaAPI.Endpoints
         {
             var roles = app.MapGroup("/api/v1/roles").WithTags("Roles (v1)");
 
-            // API para listar roles
-            roles.MapGet("/", async (IRepository<Role> repo) =>
+            // API para listar roles con filtros
+            roles.MapGet("/", async (
+                string? nombre,
+                bool? permisosEscritura,
+                IRepository<Role> repo) =>
             {
-                var listaRoles = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (!string.IsNullOrWhiteSpace(nombre))
+                {
+                    query = query.Where(r => r.Nombre.Contains(nombre));
+                }
+
+                if (permisosEscritura.HasValue)
+                {
+                    query = query.Where(r => r.PermisosEscritura == permisosEscritura.Value);
+                }
+
+                var listaRoles = await query.ToListAsync();
                 return Results.Ok(listaRoles);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 

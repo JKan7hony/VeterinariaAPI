@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,10 +12,43 @@ namespace VeterinariaAPI.Endpoints
         {
             var facturas = app.MapGroup("/api/v1/facturas").WithTags("Facturas (v1)");
 
-            // API para listar facturas
-            facturas.MapGet("/", async (IRepository<Factura> repo) =>
+            // API para listar facturas con filtros
+            facturas.MapGet("/", async (
+                int? clienteId,
+                DateOnly? fechaDesde,
+                DateOnly? fechaHasta,
+                decimal? montoMin,
+                decimal? montoMax,
+                IRepository<Factura> repo) =>
             {
-                var listaFacturas = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (clienteId.HasValue)
+                {
+                    query = query.Where(f => f.ClienteId == clienteId.Value);
+                }
+
+                if (fechaDesde.HasValue)
+                {
+                    query = query.Where(f => f.FechaEmision >= fechaDesde.Value);
+                }
+
+                if (fechaHasta.HasValue)
+                {
+                    query = query.Where(f => f.FechaEmision <= fechaHasta.Value);
+                }
+
+                if (montoMin.HasValue)
+                {
+                    query = query.Where(f => f.MontoTotal >= montoMin.Value);
+                }
+
+                if (montoMax.HasValue)
+                {
+                    query = query.Where(f => f.MontoTotal <= montoMax.Value);
+                }
+
+                var listaFacturas = await query.ToListAsync();
                 return Results.Ok(listaFacturas);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 

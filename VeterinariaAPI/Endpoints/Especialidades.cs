@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,12 +12,33 @@ namespace VeterinariaAPI.Endpoints
         {
             var especialidad = app.MapGroup("/api/v1/especialidades").WithTags("Especialidades (v1)");
 
-            // API para listar especialidades
-            especialidad.MapGet("/", async (IRepository<Especialidade> repo) =>
+            // API para listar especialidades con filtros
+            especialidad.MapGet("/", async (
+                string? nombre,
+                decimal? costoMin,
+                decimal? costoMax,
+                IRepository<Especialidade> repo) =>
             {
-                var listaEspecialidades = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (!string.IsNullOrWhiteSpace(nombre))
+                {
+                    query = query.Where(e => e.Nombre.Contains(nombre));
+                }
+
+                if (costoMin.HasValue)
+                {
+                    query = query.Where(e => e.CostoBase >= costoMin.Value);
+                }
+
+                if (costoMax.HasValue)
+                {
+                    query = query.Where(e => e.CostoBase <= costoMax.Value);
+                }
+
+                var listaEspecialidades = await query.ToListAsync();
                 return Results.Ok(listaEspecialidades);
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear una especialidad
             especialidad.MapPost("/", async (EspecialidadCreateDto dto, IRepository<Especialidade> repo) =>

@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 using VeterinariaAPI.Models;
 
 namespace VeterinariaAPI.Repositories
@@ -15,6 +16,9 @@ namespace VeterinariaAPI.Repositories
         }
 
         public async Task<List<T>> ObtenerTodosAsync() => await _dbSet.ToListAsync();
+        public async Task<List<T>> ObtenerFiltradosAsync(Expression<Func<T, bool>> predicado) => 
+            await _dbSet.Where(predicado).ToListAsync();
+        public IQueryable<T> Query() => _dbSet.AsQueryable();
         public async Task<T?> ObtenerPorIdAsync(int id) => await _dbSet.FindAsync(id);
         public async Task CrearAsync(T entidad) => await _dbSet.AddAsync(entidad);
         public async Task EliminarAsync(T entidad) => _dbSet.Remove(entidad);

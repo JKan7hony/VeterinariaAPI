@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,10 +12,31 @@ namespace VeterinariaAPI.Endpoints
         {
             var detallefac = app.MapGroup("/api/v1/detallefac").WithTags("DetalleFactura (v1)");
 
-            // API para listar detalle factura
-            detallefac.MapGet("/", async (IRepository<DetallesFactura> repo) =>
+            // API para listar detalle factura con filtros
+            detallefac.MapGet("/", async (
+                int? facturaId,
+                int? consultaId,
+                int? insumoId,
+                IRepository<DetallesFactura> repo) =>
             {
-                var listaDetalleFac = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (facturaId.HasValue)
+                {
+                    query = query.Where(d => d.FacturaId == facturaId.Value);
+                }
+
+                if (consultaId.HasValue)
+                {
+                    query = query.Where(d => d.ConsultaId == consultaId.Value);
+                }
+
+                if (insumoId.HasValue)
+                {
+                    query = query.Where(d => d.InsumoId == insumoId.Value);
+                }
+
+                var listaDetalleFac = await query.ToListAsync();
                 return Results.Ok(listaDetalleFac);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 

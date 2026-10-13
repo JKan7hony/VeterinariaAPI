@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Models;
 
 namespace VeterinariaAPI.Repositories
@@ -15,6 +15,11 @@ namespace VeterinariaAPI.Repositories
         public async Task<List<Usuario>> ObtenerTodosAsync()
         {
             return await _db.Usuarios.Include(u => u.Rol).ToListAsync();
+        }
+
+        public IQueryable<Usuario> Query()
+        {
+            return _db.Usuarios.Include(u => u.Rol).AsQueryable();
         }
 
         public async Task<Usuario?> ObtenerPorIdAsync(int id)

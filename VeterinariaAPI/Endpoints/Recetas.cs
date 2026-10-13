@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,10 +12,45 @@ namespace VeterinariaAPI.Endpoints
         {
             var recetas = app.MapGroup("/api/v1/recetas").WithTags("Recetas (v1)");
 
-            // API para listar recetas
-            recetas.MapGet("/", async (IRepository<Receta> repo) =>
+            // API para listar recetas con filtros
+            recetas.MapGet("/", async (
+                int? consultaId,
+                DateOnly? fechaDesde,
+                DateOnly? fechaHasta,
+                bool? vigentes,
+                IRepository<Receta> repo) =>
             {
-                var listaRecetas = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (consultaId.HasValue)
+                {
+                    query = query.Where(r => r.ConsultaId == consultaId.Value);
+                }
+
+                if (fechaDesde.HasValue)
+                {
+                    query = query.Where(r => r.FechaEmision >= fechaDesde.Value);
+                }
+
+                if (fechaHasta.HasValue)
+                {
+                    query = query.Where(r => r.FechaEmision <= fechaHasta.Value);
+                }
+
+                if (vigentes.HasValue)
+                {
+                    var hoy = DateOnly.FromDateTime(DateTime.Today);
+                    if (vigentes.Value)
+                    {
+                        query = query.Where(r => r.ValidaHasta >= hoy);
+                    }
+                    else
+                    {
+                        query = query.Where(r => r.ValidaHasta < hoy);
+                    }
+                }
+
+                var listaRecetas = await query.ToListAsync();
                 return Results.Ok(listaRecetas);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 

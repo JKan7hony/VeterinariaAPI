@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,10 +12,31 @@ namespace VeterinariaAPI.Endpoints
         {
             var consultas = app.MapGroup("/api/v1/consultas").WithTags("Consultas (v1)");
 
-            // API para listar consultas
-            consultas.MapGet("/", async (IRepository<Consulta> repo) =>
+            // API para listar consultas con filtros
+            consultas.MapGet("/", async (
+                int? pacienteId,
+                string? motivo,
+                string? diagnostico,
+                IRepository<Consulta> repo) =>
             {
-                var listaConsultas = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (pacienteId.HasValue)
+                {
+                    query = query.Where(c => c.PacienteId == pacienteId.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(motivo))
+                {
+                    query = query.Where(c => c.Motivo.Contains(motivo));
+                }
+
+                if (!string.IsNullOrWhiteSpace(diagnostico))
+                {
+                    query = query.Where(c => c.Diagnostico != null && c.Diagnostico.Contains(diagnostico));
+                }
+
+                var listaConsultas = await query.ToListAsync();
                 return Results.Ok(listaConsultas);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 

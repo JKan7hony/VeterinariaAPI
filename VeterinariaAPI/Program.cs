@@ -169,24 +169,24 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Límite global por IP aplicado automáticamente a todas las rutas
+    // Límite global por IP aumentado para soportar filtros rápidos y refresco continuo
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "global",
             factory: partition => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
-                PermitLimit = 100,
-                QueueLimit = 2,
+                PermitLimit = 1000,
+                QueueLimit = 50,
                 Window = TimeSpan.FromMinutes(1)
             }));
 
-    // Política restrictiva para Login / Register
+    // Política para Login / Register
     options.AddFixedWindowLimiter("AuthPolicy", opt =>
     {
-        opt.PermitLimit = 5;
+        opt.PermitLimit = 30;
         opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueLimit = 0;
+        opt.QueueLimit = 5;
     });
 });
 

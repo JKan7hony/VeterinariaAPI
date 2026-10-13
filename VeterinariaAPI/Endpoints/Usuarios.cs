@@ -1,7 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
@@ -16,10 +17,31 @@ namespace VeterinariaAPI.Endpoints
         {
             var usuarios = app.MapGroup("/api/v1/usuarios").WithTags("Usuarios (v1)");
 
-            // API para listar usuarios
-            usuarios.MapGet("/", async (IUsuarioRepository repo) =>
+            // API para listar usuarios con filtros
+            usuarios.MapGet("/", async (
+                string? nombre,
+                string? email,
+                int? rolId,
+                IUsuarioRepository repo) =>
             {
-                var listaUsuarios = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (!string.IsNullOrWhiteSpace(nombre))
+                {
+                    query = query.Where(u => u.NombreCompleto.Contains(nombre));
+                }
+
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    query = query.Where(u => u.Email.Contains(email));
+                }
+
+                if (rolId.HasValue)
+                {
+                    query = query.Where(u => u.RolId == rolId.Value);
+                }
+
+                var listaUsuarios = await query.ToListAsync();
 
                 var respuesta = listaUsuarios.Select(u => new
                 {
@@ -30,7 +52,7 @@ namespace VeterinariaAPI.Endpoints
                 });
 
                 return Results.Ok(respuesta);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para registrar/crear un usuario (Protegido con AuthPolicy)
             usuarios.MapPost("/register", async (UsuarioRegisterDto dto, IUsuarioRepository repo, AuthService auth) =>
@@ -115,7 +137,7 @@ namespace VeterinariaAPI.Endpoints
                 await repo.GuardarCambiosAsync();
 
                 return Results.NoContent();
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
         }
 
         // DTOs estructurados con el prefijo 'property:' para la correcta validación por reflexión

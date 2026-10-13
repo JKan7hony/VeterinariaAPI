@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,10 +12,37 @@ namespace VeterinariaAPI.Endpoints
         {
             var clientes = app.MapGroup("/api/v1/clientes").WithTags("Clientes (v1)");
 
-            // API para listar clientes
-            clientes.MapGet("/", async (IRepository<Cliente> repo) =>
+            // API para listar clientes con filtros
+            clientes.MapGet("/", async (
+                string? documento,
+                string? nombre,
+                string? email,
+                string? telefono,
+                IRepository<Cliente> repo) =>
             {
-                var listaClientes = await repo.ObtenerTodosAsync();
+                var query = repo.Query();
+
+                if (!string.IsNullOrWhiteSpace(documento))
+                {
+                    query = query.Where(c => c.DocumentoIdentidad.Contains(documento));
+                }
+
+                if (!string.IsNullOrWhiteSpace(nombre))
+                {
+                    query = query.Where(c => c.NombreCompleto.Contains(nombre));
+                }
+
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    query = query.Where(c => c.Email != null && c.Email.Contains(email));
+                }
+
+                if (!string.IsNullOrWhiteSpace(telefono))
+                {
+                    query = query.Where(c => c.Telefono != null && c.Telefono.Contains(telefono));
+                }
+
+                var listaClientes = await query.ToListAsync();
                 return Results.Ok(listaClientes);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
